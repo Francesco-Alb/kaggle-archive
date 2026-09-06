@@ -7,8 +7,7 @@ from typing import Optional, Tuple
 def get_dataset_paths(
     competition_name: str,
     is_kaggle: bool,
-    add_extra_data: bool = False,
-    extra_dataset_handle: str = "PLACEHOLDER",
+    extra_dataset_handle: str | None = None,
     extra_csv_name: str = "PLACEHOLDER.csv"
 ) -> Tuple[str, Optional[str]]:
     """
@@ -34,7 +33,7 @@ def get_dataset_paths(
         import kagglehub
         
         main_path = kagglehub.competition_download(competition_name)
-        if add_extra_data:
+        if extra_dataset_handle:
             try:
                 base_path = kagglehub.dataset_download(extra_dataset_handle)
                 extra_path = f"{base_path}/{extra_csv_name}"
@@ -44,7 +43,7 @@ def get_dataset_paths(
         
     else:
         main_path = f'/kaggle/input/competitions/{competition_name}' 
-        if add_extra_data:
+        if extra_dataset_handle:
             try:
                 extra_path = f"/kaggle/input/competitions/{extra_dataset_handle}/{extra_csv_name}"
                 print("✅ Extra data loaded.")
@@ -54,13 +53,12 @@ def get_dataset_paths(
     return main_path, extra_path
 
 
-def load_and_prepare_datasets(
+def load_data(
     data_path: str | Path,
     target: str,
     smoke_test: bool = False,
     sample_size: int = 1000,
     seed: int = 42,
-    add_extra_data: bool = False,
     extra_path: str | Path | None = None,
 ) -> dict[str, pd.DataFrame]:
     """
@@ -72,7 +70,6 @@ def load_and_prepare_datasets(
         smoke_test: If True, sub-samples datasets to 1000 rows for fast execution.
         sample_size: Number of rows to sample when `smoke_test` is enabled.
         seed: Random state seed used for sampling in smoke test mode.
-        add_extra_data: Flag to indicate if supplementary data should be loaded.
         extra_path: Path to the supplementary CSV file.
 
     Returns:
@@ -94,7 +91,7 @@ def load_and_prepare_datasets(
     test_df = pd.read_csv(test_path, index_col=[0])
     train_extra = (
         pd.read_csv(extra_path)
-        if add_extra_data and extra_path
+        if extra_path
         else None
     )
 
@@ -119,7 +116,7 @@ def load_and_prepare_datasets(
         "test": test_df,
     }
 
-    if add_extra_data and train_extra is not None:
+    if train_extra is not None:
         # drop columns that exist only in extra to keep feature set consistent
         extra_only = set(train_extra.columns) - set(train_df.columns)
         if extra_only:

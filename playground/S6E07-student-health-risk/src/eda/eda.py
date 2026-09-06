@@ -14,7 +14,7 @@ class EDA:
     datasets: dict
     target: str
     task_type: str = 'classification'
-    add_extra_data: bool = False
+    extra_path: str | None = None
 
     @property
     def focus_numeric_columns(self):
@@ -117,7 +117,7 @@ class EDA:
 
         print_with_sep("Columns not in test")
         print(set(self.datasets['train'].columns).difference(set(self.datasets['test'].columns)))
-        if self.add_extra_data:
+        if self.extra_path:
             print_with_sep("Additional cols in extra data")
             print(set(self.datasets['extra'].columns).difference(set(self.datasets['train'].columns)))
 

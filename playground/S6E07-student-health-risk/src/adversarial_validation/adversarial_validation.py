@@ -6,6 +6,7 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import OrdinalEncoder
 
 
+# TODO: add auto_merge if threshold looks good
 def adversarial_validation(
         datasets: dict,
         target: str,

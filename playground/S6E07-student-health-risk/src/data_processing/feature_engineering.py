@@ -1,11 +1,16 @@
 import pandas as pd
-from sklearn.preprocessing import PolynomialFeatures
+import numpy as np
 from xgboost import XGBClassifier
 from lightgbm import LGBMClassifier
 from catboost import CatBoostClassifier
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.base import BaseEstimator, TransformerMixin
+
+# TODO: push to a different module (like feature_selection) 
+# or drop entirely and rely on sklearn feature_selection in a Pipeline
 
 def consensus_feature_importance(
     X: pd.DataFrame,
@@ -119,24 +124,67 @@ def consensus_feature_importance(
 
     return importance_results
 
+# STATEFUL
+class IQRCapper(BaseEstimator, TransformerMixin):
 
-def interact(df, numeric_features):
+    def __init__(self, columns=None):
+        self.columns = columns
+
+    # NOTE: needed for to avoid errors when using .set_output(transform = 'pandas')
+    def set_output(self, transform=None):
+        return self
+
+    def fit(self, X, y=None):
+        self.columns_ = (
+            self.columns
+            if self.columns is not None
+            else X.select_dtypes(include=np.number).columns.tolist()
+        )
+
+        self.bounds_ = {}
+
+        for col in self.columns_:
+            col_data = X[col].dropna()
+            if len(col_data) == 0:
+                continue
+            q1 = X[col].quantile(0.25)
+            q3 = X[col].quantile(0.75)
+            iqr = q3 - q1
+
+            self.bounds_[col] = (
+                q1 - 1.5 * iqr,
+                q3 + 1.5 * iqr
+            )
+
+        return self
+
+    def transform(self, X):
+        X = X.copy()
+
+        for col, (lower, upper) in self.bounds_.items():
+            X[col] = X[col].clip(lower, upper)
+
+        return X
+
+# STATELESS
+def interact(
+        df: pd.DataFrame,
+        degree: int = 2,
+        interaction_only: bool = True,
+        include_bias: bool = False,
+        name_separator: str = "_X_",
+    ) -> pd.DataFrame:
     temp_df = df.copy()
 
-    other_cols = [col for col in temp_df.columns if col not in numeric_features]
+    numeric_features = temp_df.select_dtypes(include=np.number).columns.tolist()
+    other_cols = temp_df.select_dtypes(exclude=np.number).columns.tolist()
 
-    interactions = PolynomialFeatures(degree=2, interaction_only=True, include_bias=False)
+    interactions = PolynomialFeatures(degree=degree, interaction_only=interaction_only, include_bias=include_bias)
     X_interactions = interactions.fit_transform(temp_df[numeric_features])
 
     interaction_names = interactions.get_feature_names_out(numeric_features)
-    interaction_names = [name.replace(" ", "_X_") for name in interaction_names]
+    interaction_names = [name.replace(" ", name_separator) for name in interaction_names]
 
     interactions_df = pd.DataFrame(X_interactions, columns=interaction_names, index=temp_df.index)
 
     return pd.concat([temp_df[other_cols], interactions_df], axis=1)
-
-
-def preprocessing(df, numeric_features):
-    temp_df = df.copy()
-    temp_df = interact(temp_df, numeric_features)
-    return temp_df

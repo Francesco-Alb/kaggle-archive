@@ -1,4 +1,5 @@
 import random
+from pathlib import Path
 from typing import Tuple, List
 
 import numpy as np
@@ -25,59 +26,78 @@ def seed_everything(seed: int) -> None:
     print(f"✅ Seed set to {seed}")
 
 
-def iqr_outlier_capping(
-        train: pd.DataFrame,
-        valid: pd.DataFrame = None,
-        test: pd.DataFrame = None,
-        columns: list = None
-        ) -> Tuple[pd.DataFrame, pd.DataFrame | None, pd.DataFrame | None]:
-    """
-    Applies IQR-based outlier capping to specified columns of one, two, or three DataFrames.
-
-    Parameters:
-        train (pd.DataFrame): The training DataFrame used to calculate IQR thresholds.
-        valid (pd.DataFrame, optional): The validation DataFrame to cap using train thresholds.
-        test (pd.DataFrame, optional): The test DataFrame to cap using train thresholds.
-        columns (list, optional): List of column names to apply capping to. If None, applies to all numerical columns.
-
-    Returns:
-        tuple: A tuple containing:
-            - train_capped (pd.DataFrame): Capped training DataFrame.
-            - valid_capped (pd.DataFrame or None): Capped validation DataFrame (if provided).
-            - test_capped (pd.DataFrame or None): Capped test DataFrame (if provided).
-
-    Note: Make sure there are no nans
-    """
-    train_capped = train.copy()
-    valid_capped = valid.copy() if valid is not None else None
-    test_capped = test.copy() if test is not None else None
-
-    if columns is None:
-        columns = train.select_dtypes(include='number').columns.tolist()
-
-    for col in columns:
-        Q1 = np.percentile(train[col].dropna(), 25)
-        Q3 = np.percentile(train[col].dropna(), 75)
-        IQR = Q3 - Q1
-        lower_bound = Q1 - 1.5 * IQR
-        upper_bound = Q3 + 1.5 * IQR
-
-        train_capped[col] = np.clip(train_capped[col], lower_bound, upper_bound)
-
-        if valid is not None:
-            valid_capped[col] = np.clip(valid[col], lower_bound, upper_bound)
-
-        if test is not None:
-            test_capped[col] = np.clip(test[col], lower_bound, upper_bound)
-
-    return train_capped, valid_capped, test_capped
-
-
 def print_with_sep(text, sep="=", n=40):
     print("\n")
     print(sep * n)
     print('\t', text)
     print(sep * n)
+
+
+def save_predictions(
+    oof_preds: dict[str, np.ndarray],
+    test_preds: dict[str, np.ndarray],
+    preds_directory: str|Path,
+) -> None:
+    """Save OOF and test predictions using Parquet format, creating directory if needed."""
+    preds_directory = Path(preds_directory)
+
+    if not preds_directory.exists():
+        print(f"Directory {preds_directory} does not exist. Creating it.")
+        preds_directory.mkdir(parents=True, exist_ok=True)
+    
+    # ------------------------------------------ Save OOF predictions
+    for model_name, preds in oof_preds.items():
+        oof_path = preds_directory / f"oof_{model_name}.parquet"
+        if preds is not None: # and not oof_path.exists():
+            pd.DataFrame(preds).to_parquet(oof_path)
+        
+    # ------------------------------------------ Save Test predictions
+    for model_name, preds in test_preds.items():
+        test_path = preds_directory / f"test_{model_name}.parquet"
+        if preds is not None: # and not test_path.exists():
+            pd.DataFrame(preds).to_parquet(test_path)
+
+    print(f"✅ Saved predictions to {preds_directory}")
+
+def load_predictions(
+    model_names: list[str] | None = None,
+    preds_directory: str|Path = "predictions",
+) -> tuple[dict[str, np.ndarray], dict[str, np.ndarray]]:
+    """Load OOF and test predictions from disk."""
+
+    preds_directory = Path(preds_directory)
+    oof_preds = {}
+    test_preds = {}
+    
+    if model_names is None:
+        model_names = []
+        if preds_directory.exists():
+            for path in preds_directory.glob("oof_*.parquet"):
+                name = path.stem[4:]  # remove "oof_"
+                if name not in model_names:
+                    model_names.append(name)
+            for path in preds_directory.glob("test_*.parquet"):
+                name = path.stem[5:]  # remove "test_"
+                if name not in model_names:
+                    model_names.append(name)
+        model_names = sorted(model_names)
+
+    for model_name in model_names:
+        oof_path = preds_directory / f"oof_{model_name}.parquet"
+        test_path = preds_directory / f"test_{model_name}.parquet"
+        
+        if oof_path.exists():
+            oof_preds[model_name] = pd.read_parquet(oof_path).to_numpy()
+        else:
+            print(f"⚠️ OOF predictions for {model_name} not found at {oof_path}")
+            
+        if test_path.exists():
+            test_preds[model_name] = pd.read_parquet(test_path).to_numpy()
+        else:
+            print(f"⚠️ Test predictions for {model_name} not found at {test_path}")
+            
+    print(f"ℹ️ Loaded predictions from {preds_directory}")
+    return oof_preds, test_preds
 
 
 def get_cv_splits(
