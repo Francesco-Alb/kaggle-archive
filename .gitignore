@@ -5,6 +5,7 @@ models/
 tmp_trainer/
 checkpoints/
 # results/
+predictions/
 artifacts/
 catboost_info/
 
