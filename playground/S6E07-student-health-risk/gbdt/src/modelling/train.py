@@ -8,6 +8,7 @@ from typing import Callable, Dict, List, Tuple, Optional, Any, Literal
 from sklearn.metrics import balanced_accuracy_score
 from sklearn.pipeline import Pipeline
 from sklearn.base import clone
+from sklearn.utils import compute_sample_weight
 
 import lightgbm as lgb
 
@@ -23,39 +24,33 @@ def fit_model(
     y_train: pd.Series,
     X_valid: pd.DataFrame,
     y_valid: pd.Series,
+    weight_strategy: Optional[str | np.ndarray] = None,
     stopping_rounds: int = 150,
     verbose: bool = False,
 ):
     """Fit a model using model-specific training settings."""
 
-    # NOTE: 
-    # Pipelines are more natural for linear models / deep learning.
-    # For tree/boosting models, a sklearn Pipeline is often not the best default.
-    # These models usually work best with simple, explicit preprocessing:
-    # - impute missing values on train only
-    # - apply the fitted transform to validation/test
-    # - use the model's native eval_set / early_stopping logic
-
-    # TODO: revisit this function when working on linear models; a Pipeline may be used there with:
-    #       Pipeline([
-    #           ("imputer", SimpleImputer(strategy="median")),
-    #           ("scaler", StandardScaler()),
-    #           ("clf", LogisticRegression(max_iter=1000)),
-    #       ])
-    #       or another linear/DL model pipeline.
-
     categorical_features = X_train.select_dtypes(include=["category", "object"]).columns.tolist()
+    if weight_strategy is not None:
+        sample_weights = compute_sample_weight(
+            class_weight=weight_strategy,
+            y=y_train,
+        )
+    else:
+        sample_weights = None
     
     if model_name == "xgboost":
         fit_params = {
             "eval_set": [(X_valid, y_valid)],
             "verbose": 200 if verbose else False,
+            "sample_weight": sample_weights,
         }
 
     elif model_name == "lightgbm":
         fit_params = {
             "eval_set": [(X_valid, y_valid)],
             "categorical_feature": categorical_features if categorical_features else "auto",
+            "sample_weight": sample_weights,
             "callbacks": [
                 lgb.early_stopping(
                     stopping_rounds=stopping_rounds,
@@ -70,13 +65,13 @@ def fit_model(
             "cat_features": categorical_features if categorical_features else None,
             "early_stopping_rounds": stopping_rounds,
             "verbose": 200 if verbose else False,
+            "sample_weight": sample_weights,
         }
 
     model.fit(X_train, y_train, **fit_params)
 
     return model
 
-# TODO: add support for automated weighting (i.e., scale_pos_weight)
 # FIXME: objective is still kinda hardcoded
 def build_classifier(
     model_name: ModelName,
@@ -175,6 +170,7 @@ def train_cv_models(
     verbose: bool = True,
     optuna_trial: bool = False,
     preprocessing_pipeline: Optional[Pipeline] = None,
+    weight_strategy: Optional[str | np.ndarray] = "balanced",
 ) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Dict[str, List[float]]] | float:
     """Run fold-safe cross-validation for one or more model families."""
 
@@ -223,7 +219,13 @@ def train_cv_models(
             else None
         )
 
-        base_model = build_classifier(model_name, params.get(model_name, {}), seed, device, n_classes)
+        base_model = build_classifier(
+            model_name, 
+            params.get(model_name, {}), 
+            seed, 
+            device, 
+            n_classes,
+        )
 
         fold_scores = []
         X_test_fold = X_test.copy() if X_test is not None else None
@@ -246,7 +248,17 @@ def train_cv_models(
                 X_valid = fold_pipeline.transform(X_valid)
                 X_test_fold = fold_pipeline.transform(X_test) if X_test is not None else None
 
-            model = fit_model(model_name, clone(base_model), X_train, y_train, X_valid, y_valid, stopping_rounds, verbose)
+            model = fit_model(
+                model_name=model_name, 
+                model=clone(base_model), 
+                X_train=X_train, 
+                y_train=y_train, 
+                X_valid=X_valid, 
+                y_valid=y_valid, 
+                stopping_rounds=stopping_rounds, 
+                verbose=verbose,
+                weight_strategy=weight_strategy
+                )
 
             val_hard, test_hard, val_proba, test_proba = predict_fold(
                 model, task_type, X_valid, X_test_fold

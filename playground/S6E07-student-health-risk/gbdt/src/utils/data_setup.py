@@ -57,7 +57,7 @@ def load_data(
     data_path: str | Path,
     target: str,
     smoke_test: bool = False,
-    sample_size: int = 1000,
+    smoke_sample_size: int = 1000,
     seed: int = 42,
     extra_path: str | Path | None = None,
 ) -> dict[str, pd.DataFrame]:
@@ -68,7 +68,7 @@ def load_data(
         data_path: Path to the directory containing 'train.csv' and 'test.csv'.
         target: Name of the target label column.
         smoke_test: If True, sub-samples datasets to 1000 rows for fast execution.
-        sample_size: Number of rows to sample when `smoke_test` is enabled.
+        smoke_sample_size: Number of rows to sample when `smoke_test` is enabled.
         seed: Random state seed used for sampling in smoke test mode.
         extra_path: Path to the supplementary CSV file.
 
@@ -97,8 +97,8 @@ def load_data(
 
     if smoke_test:
         print("ℹ️ Running in smoke test mode.")
-        train_df = train_df.sample(n=sample_size, random_state=seed)
-        test_df = test_df.sample(n=sample_size, random_state=seed)
+        train_df = train_df.sample(n=smoke_sample_size, random_state=seed)
+        test_df = test_df.sample(n=smoke_sample_size, random_state=seed)
 
     # ------------------------------------------------------------------ Clean column names
     def _normalize(df: pd.DataFrame) -> pd.DataFrame:

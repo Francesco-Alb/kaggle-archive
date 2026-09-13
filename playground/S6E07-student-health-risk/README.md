@@ -1,10 +1,10 @@
-# Kaggle Playground Series - Season 6, Episode 7: Student Health Risk Prediction 🩺📚
+# Kaggle Playground Series - Season 6, Episode 7: Student Health Risk Prediction
 
-Welcome to the repository for the **Kaggle Playground Series S6E07** competition! The objective of this challenge is to predict student health risk categories based on various lifestyle, demographic, and health-related features.
+The objective of this challenge is to predict student health risk categories based on various lifestyle, demographic, and health-related features.
 
 ---
 
-## 📋 Challenge Overview
+## Challenge Overview
 
 - **Competition:** Kaggle Playground Series S6E07 (`playground-series-s6e7`)
 - **Task:** Multiclass Classification
@@ -30,7 +30,7 @@ etc.
 
 ---
 
-## 📂 Repository Structure
+## Repository Structure
 
 ```tree
 S6E07-student-health-risk/
@@ -51,18 +51,3 @@ S6E07-student-health-risk/
 
 * .gitignore
 ```
-
----
-
-## 🚀 Getting Started
-
-1. **Navigate to the track directory:**
-   ```bash
-   cd playground/S6E07-student-health-risk/gbdt
-   ```
-2. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. **Run notebooks or training scripts:**
-   Check the `notebooks/` directory or execute the training pipeline via `src/modelling/train.py`.
