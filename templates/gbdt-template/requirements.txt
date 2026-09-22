@@ -1,0 +1,6 @@
+catboost
+optuna-integration[xgboost]
+wandb
+# optuna-integration[lightgbm]
+# optuna-integration[catboost]
+# scikit-learn==1.3.1 # for target_encoder
