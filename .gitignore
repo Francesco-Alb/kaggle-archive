@@ -11,6 +11,9 @@ catboost_info/
 submission.csv
 __init__.py
 
+# OS generated files
+[Dd]esktop.ini
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

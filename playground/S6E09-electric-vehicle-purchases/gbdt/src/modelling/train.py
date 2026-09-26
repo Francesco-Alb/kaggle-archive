@@ -277,7 +277,10 @@ def train_cv_models(
                             (np.arange(n_test), class_indices),
                             1,
                         )
-                eval_preds = val_proba if metric_config["needs_proba"] else val_hard
+                if metric_config["needs_proba"]:
+                    eval_preds = val_proba[:, 1] if n_classes == 2 else val_proba
+                else:
+                    eval_preds = val_hard
 
             else:
                 oof_preds[valid_idx] = val_hard

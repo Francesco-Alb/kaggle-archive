@@ -9,7 +9,7 @@ import optuna
 def plot_fold_scores(fold_scores: Dict[str, List[float]], save_path: Optional[Path|str] = None):
     """Plot and optionally save score distribution across folds."""
 
-    if type(save_path) == str:
+    if isinstance(save_path, str):
         save_path = Path(save_path)
 
     scores_df = pd.DataFrame(fold_scores)
@@ -19,9 +19,11 @@ def plot_fold_scores(fold_scores: Dict[str, List[float]], save_path: Optional[Pa
     plt.xlabel('Score', fontsize=14)
     plt.ylabel('Models', fontsize=14)
     plt.tight_layout()
+
     if save_path and not save_path.exists():
-        save_path.mkdir(parents=True, exist_ok=True)
+        save_path.parent.mkdir(parents=True, exist_ok=True)
         plt.savefig(save_path)
+
     plt.show()
 
 def create_ensemble_predictions(
