@@ -172,9 +172,9 @@ def weights_optimization(
     y: pd.Series,
     oof_probs: dict,
     metric_config: Optional[Dict[str, Any]] = None,
-    verbose: bool = False
+    verbose: bool = False,
 ) -> float:
-    """Optimize ensemble weights using Optuna."""
+    """Optimize ensemble weights using Optuna (supports both hard labels and probabilities)."""
 
     model_keys = list(oof_probs.keys())
     if not model_keys:
@@ -187,15 +187,25 @@ def weights_optimization(
         "kwargs": {},
     }
 
+    needs_proba = metric_config.get("needs_proba", False)
+
     metric_fn = (
         partial(metric_config["fn"], **metric_config["kwargs"]) 
         if metric_config["kwargs"] else metric_config["fn"]
     )
 
+    # Helper function to format predictions based on metric requirements
+    def _format_preds(probs_array):
+        if needs_proba:
+            # Extract probability of the positive class for binary ROC-AUC
+            return probs_array[:, 1] if probs_array.ndim == 2 else probs_array
+        else:
+            # Extract hard class labels via argmax
+            return np.argmax(probs_array, axis=1) if probs_array.ndim == 2 else probs_array
+
     if len(model_keys) == 1:
-        preds = np.argmax(oof_probs[model_keys[0]], axis=1)
-        score = metric_fn(y, preds)
-        return score
+        preds = _format_preds(oof_probs[model_keys[0]])
+        return float(metric_fn(y, preds))
 
     weights = []
     remaining = 1.0
@@ -209,8 +219,10 @@ def weights_optimization(
     for w, key in zip(weights, model_keys):
         ensemble_probs += w * oof_probs[key]
 
-    preds = np.argmax(ensemble_probs, axis=1)
+    preds = _format_preds(ensemble_probs)
     score = float(metric_fn(y, preds))
+    
     if verbose:
         print(f"{metric_config['name'].upper()} | ensemble: {score:.4f}")
+    
     return score

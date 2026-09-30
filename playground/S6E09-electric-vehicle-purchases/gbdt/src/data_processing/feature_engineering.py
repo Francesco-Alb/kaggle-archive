@@ -5,6 +5,7 @@ from lightgbm import LGBMClassifier
 from catboost import CatBoostClassifier
 import matplotlib.pyplot as plt
 import seaborn as sns
+from typing import List, Tuple, Optional, Union
 
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -170,21 +171,84 @@ class IQRCapper(BaseEstimator, TransformerMixin):
 def interact(
         df: pd.DataFrame,
         degree: int = 2,
+        interaction_features: Optional[Union[List[str], List[Tuple[str, str]]]] = None,
         interaction_only: bool = True,
         include_bias: bool = False,
         name_separator: str = "_X_",
     ) -> pd.DataFrame:
+    """
+    Computes interaction features.
+    - If interaction_features is None, computes polynomial/interaction features on all numeric columns.
+    - If interaction_features is a list of strings, computes interactions on that subset of numeric columns.
+    - If interaction_features is a list of tuples (e.g. [('A', 'B')]), computes explicitly interactions between specified pairs.
+    """
     temp_df = df.copy()
 
-    numeric_features = temp_df.select_dtypes(include=np.number).columns.tolist()
-    other_cols = temp_df.select_dtypes(exclude=np.number).columns.tolist()
+    if len(interaction_features) > 0 and isinstance(interaction_features[0], tuple):
+        interaction_data = {}
+        
+        # Explicit pairs: (col_a, col_b)
+        for pair in interaction_features:
+            if len(pair) == 2:
+                col_a, col_b = pair
+                interaction_data[f"{col_a}{name_separator}{col_b}"] = temp_df[col_a] * temp_df[col_b]
+        interactions_df = pd.DataFrame(interaction_data, index=temp_df.index)
+        return pd.concat([temp_df, interactions_df], axis=1)
 
-    interactions = PolynomialFeatures(degree=degree, interaction_only=interaction_only, include_bias=include_bias)
-    X_interactions = interactions.fit_transform(temp_df[numeric_features])
+    else:
+        interaction_features = interaction_features or temp_df.select_dtypes(include=np.number).columns.tolist()
 
-    interaction_names = interactions.get_feature_names_out(numeric_features)
-    interaction_names = [name.replace(" ", name_separator) for name in interaction_names]
+        interactions = PolynomialFeatures(degree=degree, interaction_only=interaction_only, include_bias=include_bias)
+        X_interactions = interactions.fit_transform(temp_df[interaction_features])
+        
+        interaction_names = interactions.get_feature_names_out(interaction_features)
+        interaction_names = [name.replace(" ", name_separator) for name in interaction_names]
+        
+        interactions_df = pd.DataFrame(X_interactions, columns=interaction_names, index=temp_df.index)
+        return pd.concat([temp_df, interactions_df], axis=1)
 
-    interactions_df = pd.DataFrame(X_interactions, columns=interaction_names, index=temp_df.index)
 
-    return pd.concat([temp_df[other_cols], interactions_df], axis=1)
+# STATELESS
+def ratios(
+        df: pd.DataFrame,
+        ratio_features: Optional[Union[List[str], List[Tuple[str, str]]]] = None,
+        name_separator: str = "_/_",
+        epsilon: float = 1e-5,
+    ) -> pd.DataFrame:
+    """
+    Computes ratio features. 
+    - If ratio_features is a list of strings, computes all pairwise ratios (A/B and B/A).
+    - If ratio_features is a list of tuples (e.g. [('A', 'B')]), computes explicitly A/B.
+    """
+    temp_df = df.copy()
+    remaining_features = [col for col in temp_df.columns] # or filter out what's used
+    ratio_data = {}
+
+    # None: all combinations
+    if ratio_features is None:
+        cols = temp_df.select_dtypes(include=np.number).columns.tolist()
+        n_cols = len(cols)
+        for i in range(n_cols):
+            for j in range(i + 1, n_cols):
+                col_a, col_b = cols[i], cols[j]
+                ratio_data[f"{col_a}{name_separator}{col_b}"] = temp_df[col_a] / (temp_df[col_b].abs() + epsilon)
+                ratio_data[f"{col_b}{name_separator}{col_a}"] = temp_df[col_b] / (temp_df[col_a].abs() + epsilon)
+
+    # List[Tuple[str, str]]: explicit pairs (numerator, denominator)
+    elif len(ratio_features) > 0 and isinstance(ratio_features[0], tuple):
+        for col_a, col_b in ratio_features:
+            ratio_data[f"{col_a}{name_separator}{col_b}"] = temp_df[col_a] / (temp_df[col_b].abs() + epsilon)
+
+    # List[str]: Pairwise subset from list of strings 
+    else:
+        cols = ratio_features
+        n_cols = len(cols)
+        for i in range(n_cols):
+            for j in range(i + 1, n_cols):
+                col_a, col_b = cols[i], cols[j]
+                ratio_data[f"{col_a}{name_separator}{col_b}"] = temp_df[col_a] / (temp_df[col_b].abs() + epsilon)
+                ratio_data[f"{col_b}{name_separator}{col_a}"] = temp_df[col_b] / (temp_df[col_a].abs() + epsilon)
+
+    ratios_df = pd.DataFrame(ratio_data, index=temp_df.index)
+    return pd.concat([temp_df, ratios_df], axis=1)
+    # return pd.concat([temp_df[remaining_features], ratios_df], axis=1)
