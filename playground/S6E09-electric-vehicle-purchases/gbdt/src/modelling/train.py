@@ -75,6 +75,7 @@ def fit_model(
 # FIXME: objective is still kinda hardcoded
 def build_classifier(
     model_name: ModelName,
+    metric_config: Optional[dict[str, Any]] = None,
     params: Optional[dict[str, Any]] = None,
     seed: int = 42,
     device: str = "cpu",
@@ -82,45 +83,61 @@ def build_classifier(
 ) -> Any:
     """Build a classifier instance for the requested model family."""
     params = params or {}
+    metric_config = metric_config or {}
+
+    # Extract evaluation metric if explicitly provided in metric_config, otherwise let the model default
+    eval_metric_override = metric_config.get("eval_metric", {}).get(model_name)
+
     if model_name == "xgboost":
         from xgboost import XGBClassifier
 
-        return XGBClassifier(
+        model_kwargs = {
             **params,
-            objective="binary:logistic" if n_classes == 2 else "multi:softprob",
-            num_class=None if n_classes == 2 else n_classes,
-            eval_metric="logloss" if n_classes == 2 else "mlogloss",
-            enable_categorical=True,
-            early_stopping_rounds=100,
-            random_state=seed,
-            device=device,
-        )
+            "objective": "binary:logistic" if n_classes == 2 else "multi:softprob",
+            "num_class": None if n_classes == 2 else n_classes,
+            "enable_categorical": True,
+            "early_stopping_rounds": 100,
+            "random_state": seed,
+            "device": device,
+        }
+        if eval_metric_override:
+            model_kwargs["eval_metric"] = eval_metric_override
+            
+        return XGBClassifier(**model_kwargs)
 
     if model_name == "lightgbm":
         from lightgbm import LGBMClassifier, early_stopping
 
-        model = LGBMClassifier(
+        model_kwargs = {
             **params,
-            objective="binary" if n_classes == 2 else "multiclass",
-            n_classes=n_classes if n_classes > 2 else None,
-            verbose=-1,
-            random_state=seed,
-            device=device,
-        )
-        model._early_stopping_cb = early_stopping(100, verbose=False)  # small helper hook
+            "objective": "binary" if n_classes == 2 else "multiclass",
+            "n_classes": n_classes if n_classes > 2 else None,
+            "verbose": -1,
+            "random_state": seed,
+            "device": device,
+        }
+        if eval_metric_override:
+            model_kwargs["metric"] = eval_metric_override
+
+        model = LGBMClassifier(**model_kwargs)
+        model._early_stopping_cb = early_stopping(100, verbose=False)
         return model
 
     if model_name == "catboost":
         from catboost import CatBoostClassifier
 
-        return CatBoostClassifier(
+        model_kwargs = {
             **params,
-            loss_function="Logloss" if n_classes == 2 else "MultiClass",
-            random_state=seed,
-            verbose=0,
-            task_type=device.upper(),
-            allow_writing_files=False,
-        )
+            "loss_function": "Logloss" if n_classes == 2 else "MultiClass",
+            "random_state": seed,
+            "verbose": 0,
+            "task_type": device.upper(),
+            "allow_writing_files": False,
+        }
+        if eval_metric_override:
+            model_kwargs["eval_metric"] = eval_metric_override
+
+        return CatBoostClassifier(**model_kwargs)
 
     raise ValueError(f"Unsupported model_name: {model_name}")
 
@@ -179,6 +196,7 @@ def train_cv_models(
         "fn": balanced_accuracy_score,
         "needs_proba": False,
         "kwargs": {},
+        "eval_metric": {}
     }
     split_config = split_config or {
         "n_splits": 5,
@@ -221,6 +239,7 @@ def train_cv_models(
 
         base_model = build_classifier(
             model_name, 
+            metric_config,
             params.get(model_name, {}), 
             seed, 
             device, 
