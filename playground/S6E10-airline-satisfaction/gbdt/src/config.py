@@ -5,7 +5,7 @@ from dataclasses import dataclass, asdict, field
 
 @dataclass
 class EnvConfig:
-    competition: str = "playground-series-s6e9"
+    competition: str = "playground-series-s6e10"
     seed: int = 42
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
     smoke_test: bool = True
@@ -16,7 +16,7 @@ class EnvConfig:
 class DataConfig:
     data_path: str = ""
     extra_path: str | None = None
-    target: str = "will_buy_ev"
+    target: str = "satisfaction"
     metric: str = "roc_auc_score"
     evals_directory: Path = Path("evals")
     folds: int = 5
@@ -35,7 +35,7 @@ class ModelConfig:
 
 @dataclass
 class TrackConfig:
-    wandb_project: str = "s6e09-electric-vehicle-purchases"
+    wandb_project: str = "s6e10-airline-satisfaction"
     wandb_entity: str = ""
 
 @dataclass
