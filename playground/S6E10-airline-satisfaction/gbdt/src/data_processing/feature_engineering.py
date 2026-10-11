@@ -167,6 +167,66 @@ class IQRCapper(BaseEstimator, TransformerMixin):
 
         return X
 
+
+# STATEFUL
+class GroupAggregator(BaseEstimator, TransformerMixin):
+    """
+    Stateful transformer that computes group-level aggregations (mean, size, etc.) 
+    of target numeric columns grouped by a key (anchor) column.
+    Learns lookup statistics during .fit() on training data and applies them during .transform().
+    """
+    def __init__(self, anchor_col: str, target_cols: List[str], aggs: List[str] = ['mean']):
+        self.anchor_col = anchor_col
+        self.target_cols = target_cols
+        self.aggs = aggs
+        self.mappings_ = {}
+        self.global_means_ = {}
+
+    def set_output(self, transform=None):
+        return self
+
+    def fit(self, X, y=None):
+        X = pd.DataFrame(X.copy())
+        self.mappings_ = {}
+        self.global_means_ = {}
+
+        for target in self.target_cols:
+            if target not in X.columns or self.anchor_col not in X.columns:
+                continue
+            
+            # Compute global fallback mean
+            self.global_means_[target] = float(X[target].mean())
+            
+            # Group by anchor and compute requested aggregations
+            grouped = X.groupby(self.anchor_col)[target]
+            for agg in self.aggs:
+                if agg == 'mean':
+                    mapping = grouped.mean().to_dict()
+                elif agg == 'size':
+                    mapping = grouped.size().to_dict()
+                elif agg == 'std':
+                    mapping = grouped.std().fillna(0).to_dict()
+                else:
+                    raise ValueError(f"Unsupported aggregation: {agg}")
+
+                self.mappings_[f"{target}-{self.anchor_col}-{agg}"] = mapping
+
+        return self
+
+    def transform(self, X):
+        X = pd.DataFrame(X).copy()
+
+        for feat_name, mapping in self.mappings_.items():
+            # Extract target name from feat_name (e.g., 'seat_comfort_route_mean' -> 'seat_comfort')
+            target = feat_name.split('_route_')[0]
+            fallback = self.global_means_.get(target, 0.0)
+            
+            # Map values onto anchor column, filling unseen keys with global fallback
+            X[feat_name] = X[self.anchor_col].map(mapping).fillna(fallback).astype(np.float32)
+
+        return X
+
+
 # STATELESS
 def interact(
         df: pd.DataFrame,
