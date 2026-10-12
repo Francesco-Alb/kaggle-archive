@@ -175,10 +175,10 @@ class GroupAggregator(BaseEstimator, TransformerMixin):
     of target numeric columns grouped by a key (anchor) column.
     Learns lookup statistics during .fit() on training data and applies them during .transform().
     """
-    def __init__(self, anchor_col: str, target_cols: List[str], aggs: List[str] = ['mean']):
+    def __init__(self, anchor_col: str, target_cols: List[str], agg_funcs: List[str] = ['mean']):
         self.anchor_col = anchor_col
         self.target_cols = target_cols
-        self.aggs = aggs
+        self.agg_funcs = agg_funcs
         self.mappings_ = {}
         self.global_means_ = {}
 
@@ -199,7 +199,7 @@ class GroupAggregator(BaseEstimator, TransformerMixin):
             
             # Group by anchor and compute requested aggregations
             grouped = X.groupby(self.anchor_col)[target]
-            for agg in self.aggs:
+            for agg in self.agg_funcs:
                 if agg == 'mean':
                     mapping = grouped.mean().to_dict()
                 elif agg == 'size':
@@ -312,3 +312,26 @@ def ratios(
     ratios_df = pd.DataFrame(ratio_data, index=temp_df.index)
     return pd.concat([temp_df, ratios_df], axis=1)
     # return pd.concat([temp_df[remaining_features], ratios_df], axis=1)
+
+# STATELESS
+# TODO: add logic for List[str] where all combinations between features included will be turned into a combined feature 
+def combine_features(
+        df: pd.DataFrame,
+        combine_features: Optional[List[Tuple[str, str]]] = None,
+        name_separator: str = "_&_",
+    ) -> pd.DataFrame:
+    """
+    Computes combined features by concatenating string representations of specified columns.
+    - If combine_features is a list of tuples (e.g. [('A', 'B')]), computes explicitly A&B.
+    """
+    temp_df = df.copy()
+    combined_data = {}
+
+    if combine_features is not None:
+        for col_a, col_b in combine_features:
+            combined_data[f"{col_a}{name_separator}{col_b}"] = (
+                temp_df[col_a].astype(str) + name_separator + temp_df[col_b].astype(str)
+            )
+
+    combined_df = pd.DataFrame(combined_data, index=temp_df.index)
+    return pd.concat([temp_df, combined_df], axis=1)
