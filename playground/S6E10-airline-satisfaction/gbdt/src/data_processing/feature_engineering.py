@@ -319,6 +319,7 @@ def combine_features(
         df: pd.DataFrame,
         combine_features: Optional[List[Tuple[str, str]]] = None,
         name_separator: str = "_&_",
+        drop_original: bool = False,
     ) -> pd.DataFrame:
     """
     Computes combined features by concatenating string representations of specified columns.
@@ -326,12 +327,17 @@ def combine_features(
     """
     temp_df = df.copy()
     combined_data = {}
+    original_cols = set()
 
     if combine_features is not None:
         for col_a, col_b in combine_features:
+            original_cols.add(col_a)
+            original_cols.add(col_b)
             combined_data[f"{col_a}{name_separator}{col_b}"] = (
                 temp_df[col_a].astype(str) + name_separator + temp_df[col_b].astype(str)
             )
 
     combined_df = pd.DataFrame(combined_data, index=temp_df.index)
+    if drop_original:
+        temp_df = temp_df.drop(columns=original_cols)
     return pd.concat([temp_df, combined_df], axis=1)
