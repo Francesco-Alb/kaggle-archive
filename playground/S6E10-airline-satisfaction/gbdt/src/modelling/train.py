@@ -170,7 +170,7 @@ def predict_fold(
         test_proba,
     )
 
-
+# FIXME: too many args, use classes
 def train_cv_models(
     model_names: List[ModelName],
     X: pd.DataFrame,
@@ -187,6 +187,7 @@ def train_cv_models(
     verbose: bool = True,
     optuna_trial: bool = False,
     preprocessing_pipeline: Optional[Pipeline] = None,
+    target_encoding: bool = False,
     weight_strategy: Optional[str | np.ndarray] = "balanced",
 ) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray], Dict[str, List[float]]] | float:
     """Run fold-safe cross-validation for one or more model families."""
@@ -263,7 +264,11 @@ def train_cv_models(
             if preprocessing_pipeline:
 
                 fold_pipeline = clone(preprocessing_pipeline)
-                X_train = fold_pipeline.fit_transform(X_train)
+                if target_encoding:
+                    X_train = fold_pipeline.fit_transform(X_train, y_train)
+                else:
+                    X_train = fold_pipeline.fit_transform(X_train)
+
                 X_valid = fold_pipeline.transform(X_valid)
                 X_test_fold = fold_pipeline.transform(X_test) if X_test is not None else None
 
