@@ -66,6 +66,7 @@ def objective(
     stopping_rounds: int = 150,
     split_config: Optional[dict] = None,
     preprocessing_pipeline: Optional[Pipeline] = None,
+    target_encoding: bool = False,
     verbose: bool = False,
 ) -> float:
 
@@ -106,7 +107,8 @@ def objective(
         device=device,
         verbose=verbose,
         optuna_trial=True,
-        preprocessing_pipeline=preprocessing_pipeline
+        preprocessing_pipeline=preprocessing_pipeline,
+        target_encoding=target_encoding
     )
 
 
