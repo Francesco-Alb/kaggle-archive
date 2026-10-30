@@ -1,0 +1,2 @@
+Model,Best_Value,iterations,learning_rate,depth,bagging_temperature,l2_leaf_reg
+catboost,0.9574501289675327,1494,0.020497980520950188,6,0.5467102793432796,1.7394178221021082
