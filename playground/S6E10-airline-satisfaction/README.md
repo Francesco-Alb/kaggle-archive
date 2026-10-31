@@ -32,4 +32,19 @@ etc.
 
 ## Repository Structure
 
-...
+```text
+S6E10-airline-satisfaction/
+├── gbdt/
+│   ├── notebooks/          # Jupyter notebooks for experimentation
+│   ├── src/                # Source code
+│   │   ├── data_processing/
+│   │   ├── eda/
+│   │   ├── modelling/
+│   │   └── utils/
+│   ├── evals/              # Evaluation results and parameters
+│   ├── predictions/        # Saved prediction files
+│   ├── results/            # Performance results
+│   ├── requirements.txt    # Python dependencies
+│   └── submission.csv      # Final submission file
+└── README.md
+```
