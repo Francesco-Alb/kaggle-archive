@@ -12,7 +12,9 @@ This repo is my personal archive for past and current challenges, where I clean 
 │   ├── S6E02-heart-disease/    # Heart Disease Prediction challenge
 │   ├── S6E03-customer-churn/   # Customer Churn Prediction challenge
 │   ├── S6E04-irrigation-need/  # Irrigation Need prediction challenge
-│   └── S6E07-student-health-risk/ # Student Health Risk (modular GBDT & linear pipeline)
+│   ├── S6E07-student-health-risk/ # Student Health Risk (modular GBDT & linear pipeline)
+│   ├── S6E09-electric-vehicle-purchases/ # Electric Vehicle Purchases challenge
+│   └── S6E10-airline-satisfaction/ # Airline Satisfaction challenge
 ├── research/                   # Scientific and scholarly challenges & deep dives
 ├── templates/                  # Reusable project boilerplates and templates
 │   ├── gbdt-template/          # GBDT setup (LightGBM, XGBoost, CatBoost, Optuna)
@@ -32,3 +34,4 @@ This repo is my personal archive for past and current challenges, where I clean 
 | **[S6E04 - Irrigation Need](./playground/S6E04-irrigation-need/)** | Tabular / Environmental | Preprocessing & Modeling | Completed (Legacy Code) |
 | **[S6E07 - Student Health Risk](./playground/S6E07-student-health-risk/)** | Tabular / Risk Assessment | GBDT (Optuna tuning, CV, Modular `src/`) | Completed |
 | **[S6E09 - Electric Vehicle Purchases](./playground/S6E09-electric-vehicle-purchases/)** | Tabular / Classification | GBDT (Optuna tuning, CV, Modular `src/`) | Completed |
+| **[S6E10 - Airline Satisfaction](./playground/S6E10-airline-satisfaction/)** | Tabular / Classification | GBDT (Optuna tuning, CV, Modular `src/`) | In Progress |
