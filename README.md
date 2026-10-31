@@ -16,12 +16,12 @@ This repo is my personal archive for past and current challenges, where I clean 
 │   ├── S6E09-electric-vehicle-purchases/ # Electric Vehicle Purchases challenge
 │   └── S6E10-airline-satisfaction/ # Airline Satisfaction challenge
 ├── featured/                   # Featured Kaggle competitions, grouped by year
+│   ├── 2017/
+│   │   └── 2017-12-jigsaw-toxic-comment-classification-challenge/
 │   └── 2025/
 │       ├── 2025-06-cmi-detect-behavior-with-sensor-data/
 │       ├── 2025-06-neurips-open-polymer-prediction/
-│       ├── 2025-07-map-charting-student-math-misunderstandings/
-│       └── 2017/
-│           └── 2017-12-jigsaw-toxic-comment-classification-challenge/
+│       └── 2025-07-map-charting-student-math-misunderstandings/
 ├── research/                   # Scientific and scholarly challenges & deep dives
 ├── templates/                  # Reusable project boilerplates and templates
 │   ├── gbdt-template/          # GBDT setup (LightGBM, XGBoost, CatBoost, Optuna)
