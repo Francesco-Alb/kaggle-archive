@@ -101,6 +101,7 @@ def load_data(
         test_df = test_df.sample(n=smoke_sample_size, random_state=seed)
 
     # ------------------------------------------------------------------ Clean column names
+    # TODO: consider adding a boolean flag to the config to control whether to normalize column names or not
     def _normalize(df: pd.DataFrame) -> pd.DataFrame:
         df.columns = df.columns.str.lower().str.replace(" ", "_")
         return df

@@ -2,16 +2,17 @@ import time
 import json
 from pathlib import Path
 from functools import partial
+from dataclasses import replace
 from typing import Any, Dict, Optional, Tuple, Callable, Literal, List
 
 import numpy as np
 import pandas as pd
 import optuna
 
-from sklearn.metrics import balanced_accuracy_score
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 
+from src.config import EnvConfig, MetricConfig, OptunaConfig, PreprocessingConfig, TrainConfig
 from src.modelling.train import train_cv_models
 
 
@@ -58,56 +59,47 @@ def objective(
     X: pd.DataFrame,
     y: pd.Series,
     model_name: ModelName,
-    sampling_fraction: float = 1.0,
-    metric_config: Optional[Dict[str, Any]] = None,
-    seed: int = 42,
-    device: str = "cpu",
-    task_type: str = "classification",
-    stopping_rounds: int = 150,
-    split_config: Optional[dict] = None,
+    *,
+    env_config: EnvConfig,
+    metric_config: MetricConfig,
+    train_config: TrainConfig,
+    optuna_config: OptunaConfig,
+    preprocessing_config: PreprocessingConfig,
     preprocessing_pipeline: Optional[Pipeline] = None,
-    verbose: bool = False,
 ) -> float:
 
     """Evaluate one Optuna trial using cross-validation."""
 
-    metric_config = metric_config or {
-        "name": "balanced_accuracy",
-        "fn": balanced_accuracy_score,
-        "needs_proba": False,
-        "kwargs": {},
-    }
-    split_config = split_config or {
-        "n_splits": 3,
-        "binned_stratify_continuous": False,
-        "n_bins": 10,
-    }
     params = _suggest_params(trial, model_name)
 
     X_tune, _, y_tune, _ = train_test_split(
         X, y,
-        train_size=sampling_fraction,
-        random_state=seed,
+        train_size=optuna_config.sampling_fraction,
+        random_state=env_config.seed,
         stratify=y
     )
 
-    return train_cv_models(
+    trial_train_config = replace(
+        train_config,
+        return_proba=False,
+        stopping_rounds=optuna_config.stopping_rounds,
+        verbose=optuna_config.verbose,
+    )
+
+    return float(train_cv_models(
         model_names=[model_name],
         X=X_tune,
         y=y_tune,
         X_test=None,
+        env_config=env_config,
         metric_config=metric_config,
-        return_proba=False,
-        task_type=task_type,
+        train_config=trial_train_config,
+        split_config=optuna_config.split,
+        preprocessing_config=preprocessing_config,
         params={model_name: params},
-        stopping_rounds=stopping_rounds,
-        seed=seed,
-        split_config=split_config,
-        device=device,
-        verbose=verbose,
         optuna_trial=True,
-        preprocessing_pipeline=preprocessing_pipeline
-    )
+        preprocessing_pipeline=preprocessing_pipeline,
+    ))
 
 
 def save_optimization_results(
@@ -171,31 +163,34 @@ def weights_optimization(
     trial: optuna.Trial,
     y: pd.Series,
     oof_probs: dict,
-    metric_config: Optional[Dict[str, Any]] = None,
-    verbose: bool = False
+    metric_config: MetricConfig,
+    verbose: bool = False,
 ) -> float:
-    """Optimize ensemble weights using Optuna."""
+    """Optimize ensemble weights using Optuna (supports both hard labels and probabilities)."""
 
     model_keys = list(oof_probs.keys())
     if not model_keys:
         raise ValueError("oof_probs must contain at least one model's predictions")
 
-    metric_config = metric_config or {
-        "name": "balanced_accuracy",
-        "fn": balanced_accuracy_score,
-        "needs_proba": False,
-        "kwargs": {},
-    }
+    needs_proba = metric_config.needs_proba
 
     metric_fn = (
-        partial(metric_config["fn"], **metric_config["kwargs"]) 
-        if metric_config["kwargs"] else metric_config["fn"]
+        partial(metric_config.fn, **metric_config.kwargs)
+        if metric_config.kwargs else metric_config.fn
     )
 
+    # Helper function to format predictions based on metric requirements
+    def _format_preds(probs_array):
+        if needs_proba:
+            # Extract probability of the positive class for binary ROC-AUC
+            return probs_array[:, 1] if probs_array.ndim == 2 else probs_array
+        else:
+            # Extract hard class labels via argmax
+            return np.argmax(probs_array, axis=1) if probs_array.ndim == 2 else probs_array
+
     if len(model_keys) == 1:
-        preds = np.argmax(oof_probs[model_keys[0]], axis=1)
-        score = metric_fn(y, preds)
-        return score
+        preds = _format_preds(oof_probs[model_keys[0]])
+        return float(metric_fn(y, preds))
 
     weights = []
     remaining = 1.0
@@ -209,8 +204,10 @@ def weights_optimization(
     for w, key in zip(weights, model_keys):
         ensemble_probs += w * oof_probs[key]
 
-    preds = np.argmax(ensemble_probs, axis=1)
+    preds = _format_preds(ensemble_probs)
     score = float(metric_fn(y, preds))
+    
     if verbose:
-        print(f"{metric_config['name'].upper()} | ensemble: {score:.4f}")
+        print(f"{metric_config.name.upper()} | ensemble: {score:.4f}")
+    
     return score
