@@ -54,9 +54,10 @@ def prepare_datasets(
             if column != target and column not in boolean_features
         ]
         if impute_categoricals[0]:
-            print(f"ℹ️ Imputing missing values for categorical columns (subset: {name})")
             for col in categorical_columns:
-                subset[col] = subset[col].fillna(impute_categoricals[1])
+                if subset[col].isnull().any():
+                    print(f"ℹ️ Imputing missing values for categorical columns (subset: {name}, column: {col})")
+                    subset[col] = subset[col].fillna(impute_categoricals[1])
         subset[categorical_columns] = subset[categorical_columns].astype("category")
 
     train = prepared_dataset["train"]
