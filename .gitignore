@@ -7,9 +7,10 @@ checkpoints/
 # results/
 artifacts/
 catboost_info/
-submission.csv
 __init__.py
-[Dd]esktop.ini
+
+# Submission files
+submission.*
 
 # OS generated files
 [Dd]esktop.ini
