@@ -1,5 +1,6 @@
 # other (custom additions)
 .ignore/
+.vscode/
 data/
 models/
 tmp_trainer/
@@ -7,6 +8,7 @@ checkpoints/
 # results/
 artifacts/
 catboost_info/
+wandb/
 __init__.py
 
 # Submission files
