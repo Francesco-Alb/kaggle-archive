@@ -1,9 +1,10 @@
-from pathlib import Path
-
-import torch
-from typing import Callable
-from sklearn.metrics import balanced_accuracy_score
 from dataclasses import dataclass, asdict, field
+from pathlib import Path
+from sklearn.metrics import balanced_accuracy_score
+from sklearn.model_selection import GroupKFold
+from typing import Callable
+import torch
+
 
 @dataclass
 class EnvConfig:
@@ -26,7 +27,9 @@ class DataConfig:
 
 @dataclass
 class SplitConfig:
+    fn: Callable = GroupKFold
     n_splits: int = 5
+    group_column: str = "prompt_id"
     binned_stratify_continuous: bool = False
     n_bins: int = 10
 
@@ -71,11 +74,12 @@ class OptunaConfig:
     split: SplitConfig = field(default_factory=lambda: SplitConfig(n_splits=3))
     verbose: bool = False
 
+
 @dataclass
 class TrackConfig:
     report_to_wandb: bool = False
-    wandb_project: str = "featured-name-that-llm"
-    wandb_entity: str = ""
+    project: str = "name-that-llm"
+    entity: str = ""
 
 
 # NOTE: Use default_factory for mutable default values to prevent unintended shared state.
