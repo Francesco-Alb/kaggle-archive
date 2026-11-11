@@ -2,7 +2,7 @@ from dataclasses import dataclass, asdict, field
 from pathlib import Path
 from sklearn.metrics import balanced_accuracy_score
 from sklearn.model_selection import GroupKFold
-from typing import Callable
+from typing import Callable, Literal
 import torch
 
 
@@ -52,6 +52,7 @@ class PreprocessingConfig:
     add_extra_data: bool = False
     add_features: bool = False
     feature_selection: bool = False
+    text_preprocessing: Literal["none", "basic", "advanced"] = "none"
     use_te: bool = False
 
 
