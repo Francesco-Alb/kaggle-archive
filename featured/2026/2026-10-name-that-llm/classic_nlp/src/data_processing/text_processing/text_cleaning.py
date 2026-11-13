@@ -2,7 +2,8 @@ import re
 import string
 
 
-def simple_text_cleaner(text):
+def simple_text_cleaner(text: str) -> str:
+    """Lowercase text and remove common markup, URLs, punctuation, and digits."""
     text = text.lower()                                                 # Convert to lowercase
     text = re.sub(r'\[.*?\]', '', text)                                 # Remove text in square brackets
     text = re.sub(r'https?://\S+|www\.\S+', '', text)                   # Remove URLs
