@@ -1,0 +1,10 @@
+# classic_nlp requirements
+
+dotenv
+lexicalrichness
+matplotlib # >= 3.10.5
+nltk
+pandas
+seaborn
+scikit-learn
+wandb
