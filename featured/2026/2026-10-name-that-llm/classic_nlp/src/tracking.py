@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import wandb
 import subprocess
@@ -44,8 +44,9 @@ def init_run(
         project: str, 
         name: str, 
         group: str, 
-        config: Dict, 
-        model: Any=None, 
+        config: Dict,
+        tags: List[str] | None = None,
+        model: Any = None, 
         framework="sklearn"
     ) -> wandb.run:
     """Initialize a Weights & Biases (wandb) tracking run with metadata and configuration.
@@ -55,6 +56,7 @@ def init_run(
         name (str): The name of the specific run.
         group (str): The group name to aggregate related runs.
         config (Dict): Dictionary containing hyperparameters and configuration parameters.
+        tags (List[str], optional): Attaches a list of string labels to help filter and organize runs in the dashboard.
         model (Any, optional): The model instance to extract configuration from. Defaults to None.
         framework (str, optional): The machine learning framework used (currently supports "sklearn"). Defaults to "sklearn".
 
@@ -72,5 +74,6 @@ def init_run(
         project=project,
         name=name,
         group=group,
+        tags=tags,
         config=run_config,
     )
